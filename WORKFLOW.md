@@ -1,3 +1,8 @@
+<!-- managed:linked-repos -->
+## Linked Repositories
+- tonykone555/Assix-CTO
+<!-- /managed:linked-repos -->
+
 # Assix Team Workflow
 
 ## WebSocket Protocol: Human Intervention
@@ -33,3 +38,13 @@ When the AI Orchestrator or Automation Engine detects that user input is needed 
 -   **Logic**:
     -   `SessionManager` should save the state after successful logins or at the end of a session.
     -   `SessionManager` should load the state if a session is resumed or if a "saved login" is requested.
+
+## Code Delivery & GitHub Sync
+
+-   **Main Repository**: `tonykone555/Assix-CTO`
+-   **Primary Branch**: `main`
+-   **Sync Workflow**:
+    -   `agent-git-specialist` is responsible for pushing code updates.
+    -   Team members should notify the lead when a task is completed and ready for push.
+    -   The lead will assign a sync task to `agent-git-specialist` or use an automated trigger.
+    -   All commits must follow the conventional commit format (e.g., `feat:`, `fix:`, `docs:`).
