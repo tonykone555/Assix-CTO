@@ -18,7 +18,17 @@ export class AIOrchestrator {
     this.model = config.model || "llama-3.3-70b-versatile";
   }
 
-  async translateIntent(intent: string) {
+  async translateIntent(intent: string, sessionId?: string, savedSessions: string[] = []) {
+    let userMessage = sessionId 
+      ? `Active Session ID: ${sessionId}\n\n`
+      : "";
+    
+    if (savedSessions.length > 0) {
+      userMessage += `Available Saved Sessions: ${savedSessions.join(", ")}\n\n`;
+    }
+
+    userMessage += `User Intent: ${intent}`;
+
     const response = await this.client.chat.completions.create({
       messages: [
         {
@@ -27,7 +37,7 @@ export class AIOrchestrator {
         },
         {
           role: "user",
-          content: intent,
+          content: userMessage,
         },
       ],
       model: this.model,
@@ -68,5 +78,24 @@ export class AIOrchestrator {
     });
 
     return response.choices[0]?.message?.content || "No summary generated.";
+  }
+
+  async suggestSessionName(intent: string): Promise<string | null> {
+    const response = await this.client.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "Identify the main website or service the user wants to interact with (e.g., 'google', 'airbnb', 'linkedin'). Output ONLY the name in lowercase, or 'none' if no specific service is identified.",
+        },
+        {
+          role: "user",
+          content: intent,
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+    });
+
+    const name = response.choices[0]?.message?.content?.trim().toLowerCase();
+    return (name === "none" || !name) ? null : name;
   }
 }

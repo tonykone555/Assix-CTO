@@ -57,10 +57,14 @@ Guidelines:
    - If a task implies being logged in (e.g., "Send a DM on Twitter"), but no login steps are provided, insert a 'humanIntervention' action with type 'login' early in the flow.
    - If you anticipate a 2FA prompt (e.g., "Log in to my bank"), use 'humanIntervention' with type '2fa'.
    - Use 'humanIntervention' with type 'generic' if you encounter an unexpected blocker that requires human judgment (like a complex Captcha).
-9. Coordinate-based Interactions:
+9. Session Context and Authentication:
+   - If a task likely requires being logged into a specific service (e.g., Airbnb, LinkedIn, Twitter), check if you have been provided with an active session ID.
+   - If no active session is provided for a task that requires authentication, use 'humanIntervention' with type 'login' and a message asking the user to either log in manually or select an existing session if available.
+   - Example message: "Please log in to Airbnb or select a saved session to continue."
+10. Coordinate-based Interactions:
    - Use 'mouseClick' and 'mouseMove' when a selector is not available or when the user specifies exact coordinates (e.g., "Click at 500, 300").
    - Use 'keyboardType' for typing when no specific input field selector is targetable but the focus is already set.
-10. Always be concise and output only the valid JSON array.
+11. Always be concise and output only the valid JSON array.
 
 Example:
 User: "Go to Google and search for Assix automation"
