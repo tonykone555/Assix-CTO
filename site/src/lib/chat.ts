@@ -15,7 +15,7 @@
  */
 
 import { AIOrchestrator } from "ai-orchestrator";
-import { getEngine, setSessionSummary } from "./engine.js";
+import { getEngine, setSessionSummary, getSavedSessions } from "./engine.js";
 
 /** Callback type for sending progress updates to the client */
 export type ProgressSender = (msg: object) => void;
@@ -40,32 +40,41 @@ export async function handleChatMessage(
   sendProgress: ProgressSender,
 ): Promise<{ sessionId: string; summary: string; success: boolean }> {
   const engine = getEngine();
+  const apiKey = process.env.GROQ_API_KEY;
+  const orchestrator = apiKey ? new AIOrchestrator({ apiKey }) : null;
 
   // ── Step 1: Ensure a browser session ──
   let targetSessionId = sessionId;
   if (!targetSessionId) {
+    let suggestedName: string | null = null;
+    if (orchestrator) {
+      suggestedName = await orchestrator.suggestSessionName(prompt);
+    }
+
     sendProgress({ type: "chat-response", status: "creating-session", message: "Launching browser session…" });
+    
     targetSessionId = await engine.createSession({
       headless: true,
       browserType: "chromium",
       persistSession: true,
+      sessionId: suggestedName ?? undefined,
     });
+    
     sendProgress({
       type: "chat-response",
       status: "session-ready",
       sessionId: targetSessionId,
-      message: `Session ${targetSessionId.slice(0, 8)}… ready`,
+      message: suggestedName 
+        ? `Using session for "${suggestedName}"`
+        : `New session ${targetSessionId.slice(0, 8)}… ready`,
     });
   }
 
   const automation = engine.getAutomation(targetSessionId);
 
   // ── Step 2: Get the API key and plan via orchestrator ──
-  const apiKey = process.env.GROQ_API_KEY;
-
-  if (apiKey) {
+  if (apiKey && orchestrator) {
     // ── Real AI mode ──
-    const orchestrator = new AIOrchestrator({ apiKey });
     sendProgress({
       type: "chat-response",
       status: "thinking",
@@ -74,7 +83,8 @@ export async function handleChatMessage(
 
     let plan: ActionStep[];
     try {
-      plan = await orchestrator.translateIntent(prompt);
+      const savedSessions = getSavedSessions();
+      plan = await orchestrator.translateIntent(prompt, targetSessionId, savedSessions);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       sendProgress({

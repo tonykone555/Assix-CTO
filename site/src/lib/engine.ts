@@ -8,6 +8,10 @@
 
 import { SessionManager, type SessionLifecycleCallbacks } from "@assix/automation-engine";
 import { execSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+const STORAGE_DIR = "/home/team/shared/sessions";
 
 let engine: SessionManager | null = null;
 
@@ -81,6 +85,20 @@ export function getSessionHistory(limit = 50): Array<Record<string, unknown>> {
     return JSON.parse(result.trim()) as Array<Record<string, unknown>>;
   } catch (err) {
     console.error("[engine] Failed to read session history:", err instanceof Error ? err.message : String(err));
+    return [];
+  }
+}
+
+/** Get a list of saved session IDs from disk */
+export function getSavedSessions(): string[] {
+  try {
+    if (!fs.existsSync(STORAGE_DIR)) return [];
+    const files = fs.readdirSync(STORAGE_DIR);
+    return files
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => path.basename(f, ".json"));
+  } catch (err) {
+    console.error("[engine] Failed to list saved sessions:", err);
     return [];
   }
 }
