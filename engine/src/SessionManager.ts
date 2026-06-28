@@ -110,6 +110,21 @@ export class SessionManager {
    * @throws ActionFailedError if session limit is reached or launch fails
    */
   async createSession(config?: Partial<SessionConfig>): Promise<string> {
+    const mergedConfig: SessionConfig = {
+      ...DEFAULT_SESSION_CONFIG,
+      ...config,
+    };
+
+    // If a session ID is provided and it already exists, return it
+    if (mergedConfig.sessionId && this.sessions.has(mergedConfig.sessionId)) {
+      const existing = this.sessions.get(mergedConfig.sessionId)!;
+      if (existing.status !== "closed" && !existing.automation.isClosed) {
+        this.logger("info", "Reusing existing session", { sessionId: mergedConfig.sessionId });
+        existing.lastActiveAt = Date.now();
+        return mergedConfig.sessionId;
+      }
+    }
+
     // Enforce session limit
     if (this.sessions.size >= this.maxSessions) {
       throw new ActionFailedError(
@@ -119,11 +134,6 @@ export class SessionManager {
         false,
       );
     }
-
-    const mergedConfig: SessionConfig = {
-      ...DEFAULT_SESSION_CONFIG,
-      ...config,
-    };
 
     const launchOptions: Record<string, unknown> = {
       headless: mergedConfig.headless,
@@ -184,7 +194,7 @@ export class SessionManager {
     const context = await browser.newContext(contextOptions);
     const page = await context.newPage();
 
-    const sessionId = generateSessionId();
+    const sessionId = mergedConfig.sessionId ?? generateSessionId();
 
     // ── Restore storage state if persistence is requested ──
     let persisted = false;

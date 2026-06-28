@@ -12,6 +12,7 @@
  */
 
 export { SessionManager } from "./SessionManager.js";
+export type { SessionLifecycleCallbacks } from "./SessionManager.js";
 export { BrowserAutomation } from "./BrowserAutomation.js";
 export { ScreenshotStream } from "./ScreenshotStream.js";
 export type { ScreenshotFrame, ScreenshotFrameCallback, StreamConfig } from "./ScreenshotStream.js";

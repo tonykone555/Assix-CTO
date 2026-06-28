@@ -45,11 +45,13 @@ export interface SessionConfig {
   qualityPreset?: QualityPreset;
   /** Whether to persist browser state (cookies/localStorage) between sessions */
   persistSession?: boolean;
+  /** Optional session ID to use or restore */
+  sessionId?: string;
 }
 
 /** Default configuration values */
 export const DEFAULT_SESSION_CONFIG: Required<
-  Omit<SessionConfig, "extraHeaders" | "proxy" | "userAgent" | "locale" | "timezone" | "persistSession">
+  Omit<SessionConfig, "extraHeaders" | "proxy" | "userAgent" | "locale" | "timezone" | "persistSession" | "sessionId">
 > & {
   extraHeaders: Record<string, string> | undefined;
   proxy: string | undefined;
@@ -57,6 +59,7 @@ export const DEFAULT_SESSION_CONFIG: Required<
   locale: string | undefined;
   timezone: string | undefined;
   persistSession: boolean | undefined;
+  sessionId: string | undefined;
 } = {
   browserType: "chromium",
   headless: true,
@@ -72,6 +75,7 @@ export const DEFAULT_SESSION_CONFIG: Required<
   logLevel: "info",
   qualityPreset: "medium",
   persistSession: undefined,
+  sessionId: undefined,
 };
 
 /** Action types the engine supports */
