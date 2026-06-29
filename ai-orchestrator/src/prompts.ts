@@ -69,9 +69,10 @@ Guidelines:
    - Use 'keyboardType' for typing when no specific input field selector is targetable but the focus is already set.
 11. Data Extraction and Leads:
    - When the user asks to "find leads", "scrape profiles", or "get information about X", use 'extractText' or 'evaluate' to gather data.
-   - For multi-page tasks, use 'saveLeads' after each page is scraped to ensure data is saved progressively.
-   - For deep scraping, use 'saveLeads' after extracting details from each individual detail page.
-   - Example: { "type": "saveLeads", "params": { "leads": [{ "name": "John Doe", "email": "john@example.com", "details": "CEO at Acme" }] }, "description": "Save extracted leads to database" }
+   - **Chained Data Saving**: If you use 'evaluate' to return an array of lead objects, you can follow it immediately with a 'saveLeads' action with an empty 'leads' array: \`params: { "leads": [] }\`. The engine will automatically populate the leads from the previous step's data.
+   - For multi-page tasks, repeat the scrape/save sequence for each page.
+   - For deep scraping, navigate to each detail page, scrape the data, and use 'saveLeads' before moving to the next.
+   - Example: { "type": "saveLeads", "params": { "leads": [] }, "description": "Save extracted leads from previous step" }
 12. Always be concise and output only the valid JSON array.
 
 Example:
