@@ -131,7 +131,19 @@ export async function handleChatMessage(
       try {
         // ── Special handling for saveLeads ──
         if (step.type === "saveLeads") {
-          const leads = (step.params as any).leads || [];
+          let leads = (step.params as any).leads || [];
+          
+          // Chained data flow: if leads is empty, try to get from previous step result
+          if (leads.length === 0 && results.length > 0) {
+            const prevResult = results[results.length - 1];
+            if (prevResult.success && Array.isArray(prevResult.data)) {
+              leads = prevResult.data;
+            } else if (prevResult.success && typeof prevResult.data === 'object' && prevResult.data !== null) {
+              // If it's a single object, wrap it in an array
+              leads = [prevResult.data];
+            }
+          }
+
           for (const lead of leads) {
             saveLead(targetSessionId, lead);
           }
@@ -140,6 +152,7 @@ export async function handleChatMessage(
             description: desc,
             success: true,
             message: `Saved ${leads.length} lead(s) to database`,
+            data: { count: leads.length }
           });
           sendProgress({
             type: "chat-response",
