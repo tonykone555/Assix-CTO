@@ -2,7 +2,7 @@
   "name": "assix-cto",
   "private": true,
   "scripts": {
-    "build": "bun install --cwd ai-orchestrator && bun run --cwd ai-orchestrator build && bun install --cwd engine && bun run --cwd engine build && bun install --cwd site && bun run --cwd site build",
-    "start": "bun run --cwd site serve.ts"
+    "build": "cd site && bun install && bun run build",
+    "start": "cd site && bun run serve.ts"
   }
 }
