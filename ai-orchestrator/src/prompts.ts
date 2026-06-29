@@ -48,7 +48,9 @@ Guidelines:
 6. For scraping tasks:
    - Use 'extractText' to get information from the page.
    - You can use 'evaluate' for more complex extraction logic if 'extractText' is not enough.
-   - If there is pagination, include actions to click 'Next' and repeat the extraction.
+   - **Multi-page scraping**: If the user asks for multiple pages or a large number of results, include actions to click the 'Next' pagination button and repeat the extraction/saving steps for each page.
+   - **Deep scraping (Detail pages)**: If the user needs details that are only visible by clicking on each item (e.g., clicking a profile to see an email), include actions to click each item, extract the details, use 'saveLeads', and then use 'goBack' to return to the list.
+   - Always use 'waitForSelector' after navigating or clicking to ensure the new content is loaded before scraping.
 7. For outreach tasks:
    - Break it down into: Navigate to profile -> Click message button -> Type message -> Click send.
    - Use 'waitForSelector' at each step to ensure the UI has updated.
@@ -67,9 +69,24 @@ Guidelines:
    - Use 'keyboardType' for typing when no specific input field selector is targetable but the focus is already set.
 11. Data Extraction and Leads:
    - When the user asks to "find leads", "scrape profiles", or "get information about X", use 'extractText' or 'evaluate' to gather data.
-   - At the end of the extraction process, use 'saveLeads' to persist the structured data.
+   - For multi-page tasks, use 'saveLeads' after each page is scraped to ensure data is saved progressively.
+   - For deep scraping, use 'saveLeads' after extracting details from each individual detail page.
    - Example: { "type": "saveLeads", "params": { "leads": [{ "name": "John Doe", "email": "john@example.com", "details": "CEO at Acme" }] }, "description": "Save extracted leads to database" }
 12. Always be concise and output only the valid JSON array.
+
+Example:
+User: "Search for 'real estate agents' in New York on a directory site, and scrape the first 2 pages of results."
+Output:
+[
+  { "type": "navigate", "params": { "url": "https://example-directory.com/search?q=real+estate+agents&l=New+York" }, "description": "Navigate to search results" },
+  { "type": "waitForSelector", "params": { "selector": ".result-item" }, "description": "Wait for results to load" },
+  { "type": "evaluate", "params": { "expression": "Array.from(document.querySelectorAll('.result-item')).map(el => ({ name: el.querySelector('.name')?.innerText, details: el.querySelector('.phone')?.innerText }))" }, "description": "Extract leads from Page 1" },
+  { "type": "saveLeads", "params": { "leads": [] }, "description": "Save leads from Page 1 (The engine will populate the actual data from the previous evaluate step)" },
+  { "type": "click", "params": { "selector": "a.next-page" }, "description": "Click 'Next' for Page 2" },
+  { "type": "waitForSelector", "params": { "selector": ".result-item" }, "description": "Wait for Page 2 results" },
+  { "type": "evaluate", "params": { "expression": "Array.from(document.querySelectorAll('.result-item')).map(el => ({ name: el.querySelector('.name')?.innerText, details: el.querySelector('.phone')?.innerText }))" }, "description": "Extract leads from Page 2" },
+  { "type": "saveLeads", "params": { "leads": [] }, "description": "Save leads from Page 2" }
+]
 
 Example:
 User: "Go to Google and search for Assix automation"
