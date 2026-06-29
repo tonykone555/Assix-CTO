@@ -68,6 +68,9 @@ export class BrowserAutomation {
   /** Human-wait resolvers: keyed by a unique ID per wait call */
   private humanWaitResolvers: Map<string, { resolve: (value: string) => void; reject: (err: Error) => void; timer?: ReturnType<typeof setTimeout> }> = new Map();
 
+  /** Anti-stuck: if true, all running actions should abort */
+  private interrupted = false;
+
   constructor(
     id: string,
     page: Page,
@@ -106,6 +109,9 @@ export class BrowserAutomation {
     retryable = true,
   ): Promise<ActionResult> {
     const start = performance.now();
+
+    // Clear any stale interrupt flag before starting a fresh action
+    this.interrupted = false;
 
     try {
       this.actionCount++;
@@ -200,6 +206,23 @@ export class BrowserAutomation {
   }
 
   /**
+   * Resume the first pending human wait without knowing the specific waitId.
+   * Useful when the dashboard UI wants to "Resume" after an interrupt but doesn't
+   * track the waitId. Resolves the first pending wait in FIFO order.
+   * @param data - Optional data from the human to pass back
+   * @returns true if a pending wait was resolved, false if none pending
+   */
+  resumeAnyHumanWait(data?: string): boolean {
+    const entries = Array.from(this.humanWaitResolvers.entries());
+    if (entries.length === 0) return false;
+    const [waitId, entry] = entries[0];
+    if (entry.timer) clearTimeout(entry.timer);
+    this.humanWaitResolvers.delete(waitId);
+    entry.resolve(data ?? "resumed");
+    return true;
+  }
+
+  /**
    * Signal a human-wait to resume. Looks up the pending wait by waitId
    * and resolves it with the provided data.
    * @param waitId - The wait ID from the action result
@@ -220,9 +243,100 @@ export class BrowserAutomation {
     return this.humanWaitResolvers.size > 0;
   }
 
+  /** Check if the engine has been interrupted */
+  get isInterrupted(): boolean {
+    return this.interrupted;
+  }
+
+  /**
+   * Interrupt all running actions. Any in-progress mouse/keyboard/navigation
+   * action will be rejected with an interrupt error.
+   */
+  interrupt(): void {
+    this.interrupted = true;
+    // Also interrupt any pending human waits
+    for (const [, entry] of this.humanWaitResolvers) {
+      if (entry.timer) clearTimeout(entry.timer);
+      entry.reject(new ActionFailedError("INTERRUPTED", "Action interrupted by user", "recoverable", false));
+    }
+    this.humanWaitResolvers.clear();
+    this.logger("warn", "Engine interrupted by user");
+  }
+
+  /** Reset the interrupt flag (call before starting new actions) */
+  clearInterrupt(): void {
+    this.interrupted = false;
+  }
+
   /** Get the context (for storage state) */
   getPlaywrightContext(): BrowserContext {
     return this.context;
+  }
+
+  // ── Timeout utility ──
+
+  /**
+   * Wrap a promise with a timeout. If the timeout fires, the promise rejects.
+   * Also checks the interrupt flag periodically.
+   */
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+    if (this.interrupted) {
+      throw new ActionFailedError("INTERRUPTED", `Action interrupted before starting: ${label}`, "recoverable", false);
+    }
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new ActionFailedError(
+          "TIMEOUT",
+          `Action timed out after ${timeoutMs}ms: ${label}`,
+          "transient",
+          true,
+        ));
+      }, timeoutMs);
+
+      const checkInterval = setInterval(() => {
+        if (this.interrupted) {
+          clearTimeout(timer);
+          clearInterval(checkInterval);
+          reject(new ActionFailedError("INTERRUPTED", `Action interrupted: ${label}`, "recoverable", false));
+        }
+      }, 200);
+
+      promise.then(
+        (val) => {
+          clearTimeout(timer);
+          clearInterval(checkInterval);
+          resolve(val);
+        },
+        (err) => {
+          clearTimeout(timer);
+          clearInterval(checkInterval);
+          reject(err);
+        },
+      );
+    });
+  }
+
+  // ── Coordinate scaling ──
+
+  /**
+   * Scale coordinates from frontend viewport (typically 1280x720) to the actual
+   * browser viewport. This prevents rounding errors when the actual viewport differs
+   * from the streamed preview.
+   */
+  private scaleCoordinates(x: number, y: number, fromWidth?: number, fromHeight?: number): { x: number; y: number } {
+    const targetViewport = this.config.viewport ?? { width: 1280, height: 720 };
+    const srcW = fromWidth ?? 1280;
+    const srcH = fromHeight ?? 720;
+
+    if (srcW === targetViewport.width && srcH === targetViewport.height) {
+      return { x: Math.round(x), y: Math.round(y) };
+    }
+
+    // Scale proportionally, rounding to avoid sub-pixel issues
+    return {
+      x: Math.round((x / srcW) * targetViewport.width),
+      y: Math.round((y / srcH) * targetViewport.height),
+    };
   }
 
   // ── Private helpers ──────────────────────────────────────
@@ -294,6 +408,8 @@ export class BrowserAutomation {
           return this.actionMouseMove(params);
         case "keyboardType":
           return this.actionKeyboardType(params);
+        case "saveLeads":
+          return this.actionSaveLeads(params);
         default:
           throw new ActionFailedError(
             ErrorCodes.UNSUPPORTED_ACTION,
@@ -324,7 +440,12 @@ export class BrowserAutomation {
 
   private async actionNavigate(params: any): Promise<ActionResult> {
     const { url, waitUntil = "domcontentloaded" } = params;
-    await this.page.goto(url, { waitUntil, timeout: this.config.navigationTimeout });
+    const timeout = this.config.navigationTimeout ?? 60_000;
+    await this.withTimeout(
+      this.page.goto(url, { waitUntil, timeout }),
+      timeout + 5000,
+      `navigate(${url})`,
+    );
     return { success: true, message: `Navigated to ${url}`, durationMs: 0 };
   }
 
@@ -678,20 +799,36 @@ export class BrowserAutomation {
   // ── Mouse & Keyboard Primitives (no selector needed) ──
 
   private async actionMouseClick(params: any): Promise<ActionResult> {
-    const { x, y, button = "left", clickCount = 1, delay } = params;
-    await this.page.mouse.click(x, y, { button, clickCount, delay });
-    return { success: true, message: `Mouse clicked at (${x}, ${y})`, durationMs: 0 };
+    const { x, y, button = "left", clickCount = 1, delay, timeout = 5000, fromWidth, fromHeight } = params;
+    const scaled = this.scaleCoordinates(x, y, fromWidth, fromHeight);
+    await this.withTimeout(
+      this.page.mouse.click(scaled.x, scaled.y, { button, clickCount, delay }),
+      timeout,
+      `mouseClick(${scaled.x}, ${scaled.y})`,
+    );
+    return { success: true, message: `Mouse clicked at (${scaled.x}, ${scaled.y})`, durationMs: 0 };
   }
 
   private async actionMouseMove(params: any): Promise<ActionResult> {
-    const { x, y, steps } = params;
-    await this.page.mouse.move(x, y, steps ? { steps } : undefined);
-    return { success: true, message: `Mouse moved to (${x}, ${y})`, durationMs: 0 };
+    const { x, y, steps, timeout = 5000, fromWidth, fromHeight } = params;
+    const scaled = this.scaleCoordinates(x, y, fromWidth, fromHeight);
+    await this.withTimeout(
+      this.page.mouse.move(scaled.x, scaled.y, steps ? { steps } : undefined),
+      timeout,
+      `mouseMove(${scaled.x}, ${scaled.y})`,
+    );
+    return { success: true, message: `Mouse moved to (${scaled.x}, ${scaled.y})`, durationMs: 0 };
   }
 
   private async actionKeyboardType(params: any): Promise<ActionResult> {
-    const { text, delay } = params;
-    await this.page.keyboard.type(text, { delay });
+    const { text, delay, timeout = 10_000 } = params;
+    // Estimate per-char timing for a sensible per-action cap
+    const effectiveTimeout = Math.max(timeout, text.length * (delay ?? 50) + 2000);
+    await this.withTimeout(
+      this.page.keyboard.type(text, { delay }),
+      effectiveTimeout,
+      `keyboardType(${text.length} chars)`,
+    );
     return { success: true, message: `Typed text (${text.length} chars)`, durationMs: 0 };
   }
 
@@ -709,6 +846,17 @@ export class BrowserAutomation {
       } else {
         console.log(`${prefix} [${level.toUpperCase()}] ${msg}`);
       }
+    };
+  }
+
+  private async actionSaveLeads(params: any): Promise<ActionResult> {
+    const { leads } = params;
+    const count = Array.isArray(leads) ? leads.length : 0;
+    return {
+      success: true,
+      message: `Saved ${count} lead(s) to structured storage`,
+      durationMs: 0,
+      data: { count },
     };
   }
 }

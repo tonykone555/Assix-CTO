@@ -108,7 +108,8 @@ export type ActionType =
   | "close"
   | "mouseClick"
   | "mouseMove"
-  | "keyboardType";
+  | "keyboardType"
+  | "saveLeads";
 
 /**
  * Parameters for each supported action.
@@ -142,7 +143,8 @@ export type ActionParams = NavigateParams
   | CloseParams
   | MouseClickParams
   | MouseMoveParams
-  | KeyboardTypeParams;
+  | KeyboardTypeParams
+  | SaveLeadsParams;
 
 /** Error severity for error handling */
 export type ErrorSeverity = "recoverable" | "fatal" | "transient";
@@ -428,6 +430,12 @@ export interface MouseClickParams {
   clickCount?: number;
   /** Delay between mousedown and mouseup in ms */
   delay?: number;
+  /** Timeout in ms for the action (default: 5000) */
+  timeout?: number;
+  /** Source viewport width for coordinate scaling (e.g. 1280 from frontend) */
+  fromWidth?: number;
+  /** Source viewport height for coordinate scaling (e.g. 720 from frontend) */
+  fromHeight?: number;
 }
 
 export interface MouseMoveParams {
@@ -437,6 +445,12 @@ export interface MouseMoveParams {
   y: number;
   /** Number of steps to move in (smooth movement) */
   steps?: number;
+  /** Timeout in ms for the action (default: 5000) */
+  timeout?: number;
+  /** Source viewport width for coordinate scaling */
+  fromWidth?: number;
+  /** Source viewport height for coordinate scaling */
+  fromHeight?: number;
 }
 
 export interface KeyboardTypeParams {
@@ -444,4 +458,18 @@ export interface KeyboardTypeParams {
   text: string;
   /** Delay between key presses in ms */
   delay?: number;
+  /** Timeout in ms for the total action (default: 10000) */
+  timeout?: number;
+}
+export interface LeadData {
+  name?: string;
+  email?: string;
+  details?: string;
+  /** Arbitrary key-value pairs */
+  metadata?: Record<string, unknown>;
+}
+
+export interface SaveLeadsParams {
+  /** Array of lead data to save */
+  leads: LeadData[];
 }

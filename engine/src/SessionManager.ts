@@ -325,6 +325,19 @@ export class SessionManager {
   }
 
   /**
+   * Resume the first pending human wait on a session without knowing the waitId.
+   * Useful when the dashboard UI wants to "Resume" without tracking waitIds.
+   * @param sessionId - The session ID
+   * @param data - Optional data to pass back
+   * @returns true if resolved, false if no pending waits
+   */
+  resumeAnyHumanWait(sessionId: string, data?: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.automation.isClosed) return false;
+    return session.automation.resumeAnyHumanWait(data);
+  }
+
+  /**
    * Get an automation instance by session ID.
    */
   getAutomation(sessionId: string): BrowserAutomation {
