@@ -31,7 +31,17 @@ export const ActionTypeSchema = z.enum([
   "mouseClick",
   "mouseMove",
   "keyboardType",
+  "saveLeads",
 ]);
+
+export const SaveLeadsParamsSchema = z.object({
+  leads: z.array(z.object({
+    name: z.string().optional(),
+    email: z.string().optional(),
+    details: z.string().optional(),
+    metadata: z.record(z.any()).optional(),
+  })),
+});
 
 export const HumanInterventionParamsSchema = z.object({
   type: z.enum(["login", "2fa", "generic"]),
