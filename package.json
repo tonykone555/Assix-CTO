@@ -1,9 +1,8 @@
 {
   "name": "assix-cto",
   "private": true,
-  "workspaces": ["ai-orchestrator", "engine", "site"],
   "scripts": {
-    "build": "npm run build --workspace=ai-orchestrator && npm run build --workspace=engine && npm run build --workspace=site",
-    "start": "cd site && bun run start"
+    "build": "bun install --cwd ai-orchestrator && bun run --cwd ai-orchestrator build && bun install --cwd engine && bun run --cwd engine build && bun install --cwd site && bun run --cwd site build",
+    "start": "bun run --cwd site serve.ts"
   }
 }
