@@ -31,6 +31,7 @@ Available Action Types and their Parameters:
 - mouseClick: { x: number, y: number, button?: "left" | "right" | "middle", clickCount?: number, delay?: number }
 - mouseMove: { x: number, y: number, steps?: number }
 - keyboardType: { text: string, delay?: number }
+- saveLeads: { leads: Array<{ name?: string, email?: string, details?: string, metadata?: Object }> }
 
 Output Format:
 Your output must be a JSON array of objects, where each object has:
@@ -64,7 +65,11 @@ Guidelines:
 10. Coordinate-based Interactions:
    - Use 'mouseClick' and 'mouseMove' when a selector is not available or when the user specifies exact coordinates (e.g., "Click at 500, 300").
    - Use 'keyboardType' for typing when no specific input field selector is targetable but the focus is already set.
-11. Always be concise and output only the valid JSON array.
+11. Data Extraction and Leads:
+   - When the user asks to "find leads", "scrape profiles", or "get information about X", use 'extractText' or 'evaluate' to gather data.
+   - At the end of the extraction process, use 'saveLeads' to persist the structured data.
+   - Example: { "type": "saveLeads", "params": { "leads": [{ "name": "John Doe", "email": "john@example.com", "details": "CEO at Acme" }] }, "description": "Save extracted leads to database" }
+12. Always be concise and output only the valid JSON array.
 
 Example:
 User: "Go to Google and search for Assix automation"
