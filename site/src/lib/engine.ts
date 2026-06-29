@@ -75,6 +75,45 @@ export function setSessionSummary(sessionId: string, summary: string): void {
   );
 }
 
+/** Save structured lead data to the database */
+export function saveLead(sessionId: string, lead: any): void {
+  const id = generateId();
+  const name = (lead.name || "").replace(/'/g, "''");
+  const email = (lead.email || "").replace(/'/g, "''");
+  const details = (lead.details || "").replace(/'/g, "''");
+  const dataJson = JSON.stringify(lead).replace(/'/g, "''");
+  
+  // Try to find historyId for this sessionId
+  let historyId = "";
+  try {
+    const result = execSync(
+      `team-db "SELECT id FROM session_history WHERE sessionId = '${sessionId}' ORDER BY createdAt DESC LIMIT 1"`,
+      { timeout: 10_000, encoding: "utf-8" }
+    );
+    const history = JSON.parse(result.trim());
+    if (history && history.length > 0) {
+      historyId = history[0].id;
+    }
+  } catch { /* ignore */ }
+
+  dbExec(
+    `INSERT INTO leads (id, historyId, sessionId, name, email, details, dataJson) VALUES ('${id}', '${historyId}', '${sessionId}', '${name}', '${email}', '${details}', '${dataJson}')`
+  );
+}
+
+/** Get leads for a specific session or history record */
+export function getLeads(sessionIdOrHistoryId: string): Array<Record<string, unknown>> {
+  try {
+    const result = execSync(
+      `team-db "SELECT * FROM leads WHERE sessionId = '${sessionIdOrHistoryId}' OR historyId = '${sessionIdOrHistoryId}' ORDER BY createdAt DESC"`,
+      { timeout: 10_000, encoding: "utf-8" }
+    );
+    return JSON.parse(result.trim()) as Array<Record<string, unknown>>;
+  } catch {
+    return [];
+  }
+}
+
 /** Get session history from the database */
 export function getSessionHistory(limit = 50): Array<Record<string, unknown>> {
   try {

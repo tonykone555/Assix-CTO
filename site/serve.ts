@@ -7,7 +7,12 @@
 // Run `bun run build` before starting. Restart it with `bun run publish`.
 
 import handler from "./dist/server/server.js";
-import { getEngine, shutdownEngine, getSessionHistory } from "./src/lib/engine.js";
+import { 
+  getEngine, 
+  shutdownEngine, 
+  getSessionHistory, 
+  getLeads 
+} from "./src/lib/engine.js";
 import { handleChatMessage } from "./src/lib/chat.js";
 
 const PORT = 3000;
@@ -99,6 +104,12 @@ async function handleApi(req: Request): Promise<Response> {
       return json({ resolved });
     }
 
+    // GET /api/sessions/:id/leads — get extracted leads for a session
+    if (req.method === "GET" && segments[1] === "sessions" && segments[2] && segments[3] === "leads") {
+      const leads = getLeads(segments[2]);
+      return json({ leads });
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -133,7 +144,7 @@ for (let attempt = 1; ; attempt++) {
 
       // WebSocket events
       websocket: {
-        message(ws, message) {
+        async message(ws, message) {
           try {
             const data = JSON.parse(message as string) as { type: string; sessionId?: string; action?: string; quality?: string };
 
@@ -187,27 +198,10 @@ for (let attempt = 1; ; attempt++) {
               if (waitId) {
                 resolved = engine.resumeHumanWait(data.sessionId, waitId, inputData);
               } else {
-                // Backward compat: resume any pending wait on this session
-                // Try to find any pending humanWait
-                const sessionInfo = engine.getSessionInfo(data.sessionId);
-                if (sessionInfo) {
-                  try {
-                    const automation = engine.getAutomation(data.sessionId);
-                    // If there's a pending wait, we can't resolve without waitId
-                    // so we send a message to the client
-                    ws.send(JSON.stringify({
-                      type: "chat-response",
-                      status: "error",
-                      message: "waitId is required to resume. Check the waitId from the human-intervention-needed message.",
-                    }));
-                  } catch {
-                    ws.send(JSON.stringify({
-                      type: "chat-response",
-                      status: "error",
-                      message: `Session ${data.sessionId} not found or closed.`,
-                    }));
-                  }
-                }
+                // No specific waitId — resume any pending human wait on this session.
+                // This handles the case where the user clicks "Resume" after an
+                // interrupt without tracking the specific waitId.
+                resolved = engine.resumeAnyHumanWait(data.sessionId, inputData);
               }
 
               if (resolved) {
@@ -218,7 +212,12 @@ for (let attempt = 1; ; attempt++) {
                   message: "Execution resumed after human intervention.",
                 }));
               } else if (!waitId) {
-                // already sent error above
+                // Tried resumeAnyHumanWait but no pending waits found
+                ws.send(JSON.stringify({
+                  type: "chat-response",
+                  status: "warning",
+                  message: `No pending human wait on session ${data.sessionId}. The wait may have already been resolved or timed out.`,
+                }));
               } else {
                 ws.send(JSON.stringify({
                   type: "chat-response",
@@ -247,6 +246,86 @@ for (let attempt = 1; ; attempt++) {
                   }));
                 } catch { /* ignore */ }
               });
+            }
+
+            // ── Direct Interaction (user clicking/typing on live stream) ──
+            if ((data.type === "direct-click" || data.type === "direct-move") && data.sessionId) {
+              const engine = getEngine();
+              const actionType = data.type === "direct-click" ? "mouseClick" : "mouseMove";
+              const params = {
+                x: (data as any).x ?? 0,
+                y: (data as any).y ?? 0,
+                button: (data as any).button,
+                clickCount: (data as any).clickCount,
+                fromWidth: (data as any).fromWidth ?? 1280,
+                fromHeight: (data as any).fromHeight ?? 720,
+                timeout: 5000,
+              };
+
+              try {
+                const automation = engine.getAutomation(data.sessionId);
+                const result = await automation.executeAction(actionType as any, params as any, false);
+                ws.send(JSON.stringify({
+                  type: "direct-result",
+                  action: data.type,
+                  success: result.success,
+                  message: result.message,
+                }));
+              } catch (err) {
+                ws.send(JSON.stringify({
+                  type: "direct-result",
+                  action: data.type,
+                  success: false,
+                  message: err instanceof Error ? err.message : String(err),
+                }));
+              }
+            }
+
+            if (data.type === "direct-type" && data.sessionId) {
+              const engine = getEngine();
+              const params = {
+                text: (data as any).text ?? "",
+                delay: (data as any).delay,
+                timeout: 10_000,
+              };
+
+              try {
+                const automation = engine.getAutomation(data.sessionId);
+                const result = await automation.executeAction("keyboardType" as any, params as any, false);
+                ws.send(JSON.stringify({
+                  type: "direct-result",
+                  action: "direct-type",
+                  success: result.success,
+                  message: result.message,
+                }));
+              } catch (err) {
+                ws.send(JSON.stringify({
+                  type: "direct-result",
+                  action: "direct-type",
+                  success: false,
+                  message: err instanceof Error ? err.message : String(err),
+                }));
+              }
+            }
+
+            // ── Interrupt / Force Resume ──
+            if (data.type === "interrupt" && data.sessionId) {
+              const engine = getEngine();
+              try {
+                const automation = engine.getAutomation(data.sessionId);
+                automation.interrupt();
+                ws.send(JSON.stringify({
+                  type: "interrupted",
+                  sessionId: data.sessionId,
+                  message: "Engine interrupted. All pending actions cancelled.",
+                }));
+              } catch (err) {
+                ws.send(JSON.stringify({
+                  type: "interrupt-error",
+                  sessionId: data.sessionId,
+                  message: err instanceof Error ? err.message : String(err),
+                }));
+              }
             }
           } catch { /* ignore invalid JSON */ }
         },

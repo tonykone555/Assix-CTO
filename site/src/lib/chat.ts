@@ -15,7 +15,7 @@
  */
 
 import { AIOrchestrator } from "ai-orchestrator";
-import { getEngine, setSessionSummary, getSavedSessions } from "./engine.js";
+import { getEngine, setSessionSummary, getSavedSessions, saveLead } from "./engine.js";
 
 /** Callback type for sending progress updates to the client */
 export type ProgressSender = (msg: object) => void;
@@ -129,6 +129,29 @@ export async function handleChatMessage(
 
       engine.setSessionStatus(targetSessionId, "busy");
       try {
+        // ── Special handling for saveLeads ──
+        if (step.type === "saveLeads") {
+          const leads = (step.params as any).leads || [];
+          for (const lead of leads) {
+            saveLead(targetSessionId, lead);
+          }
+          results.push({
+            step: i + 1,
+            description: desc,
+            success: true,
+            message: `Saved ${leads.length} lead(s) to database`,
+          });
+          sendProgress({
+            type: "chat-response",
+            status: "step-done",
+            step: i + 1,
+            totalSteps: plan.length,
+            description: desc,
+            message: `Successfully saved ${leads.length} lead(s)`,
+          });
+          continue;
+        }
+
         // ── Special handling for waitForHuman ──
         if (step.type === "waitForHuman") {
           const msg = (step.params as any).message || "Human intervention required";
@@ -146,6 +169,49 @@ export async function handleChatMessage(
           // Execute waitForHuman — this creates a promise that blocks until
           // the engine's resumeHumanWait() is called from the WebSocket handler
           const result = await automation.executeAction("waitForHuman", step.params);
+
+          // ── Handle interruption during waitForHuman ──
+          if (!result.success && result.error?.code === 'INTERRUPTED') {
+            sendProgress({
+              type: "chat-response",
+              status: "interrupted-waiting-for-resume",
+              step: i + 1,
+              totalSteps: plan.length,
+              description: desc,
+              message: `Step ${i + 1} was interrupted. Fix the page manually, then click Resume to retry this step.`,
+              sessionId: targetSessionId,
+            });
+
+            // Block until user clicks Resume
+            const resumeResult = await automation.executeAction("waitForHuman", {
+              message: `Step ${i + 1} ("${desc}") was interrupted. Make any needed manual adjustments, then click Resume to retry.`,
+            });
+
+            if (resumeResult.success) {
+              sendProgress({
+                type: "chat-response",
+                status: "resume-ready",
+                step: i + 1,
+                totalSteps: plan.length,
+                description: desc,
+                message: "Resuming — retrying interrupted step...",
+                sessionId: targetSessionId,
+              });
+              i--; // Retry this step
+              continue;
+            } else {
+              sendProgress({
+                type: "chat-response",
+                status: "plan-aborted",
+                message: `Plan aborted at step ${i + 1}: ${resumeResult.message}`,
+              });
+              return {
+                sessionId: targetSessionId,
+                summary: `Aborted at step ${i + 1}: ${desc}`,
+                success: false,
+              };
+            }
+          }
 
           results.push({
             step: i + 1,
@@ -189,6 +255,50 @@ export async function handleChatMessage(
           step.type as any,
           step.params as any,
         );
+
+        // ── Handle interruption during a regular action ──
+        if (!result.success && result.error?.code === 'INTERRUPTED') {
+          sendProgress({
+            type: "chat-response",
+            status: "interrupted-waiting-for-resume",
+            step: i + 1,
+            totalSteps: plan.length,
+            description: desc,
+            message: `Step ${i + 1} was interrupted. Fix the page manually, then click Resume to retry this step.`,
+            sessionId: targetSessionId,
+          });
+
+          // Block until user clicks Resume
+          const resumeResult = await automation.executeAction("waitForHuman", {
+            message: `Step ${i + 1} ("${desc}") was interrupted. Make any needed manual adjustments, then click Resume to retry.`,
+          });
+
+          if (resumeResult.success) {
+            sendProgress({
+              type: "chat-response",
+              status: "resume-ready",
+              step: i + 1,
+              totalSteps: plan.length,
+              description: desc,
+              message: "Resuming — retrying interrupted step...",
+              sessionId: targetSessionId,
+            });
+            i--; // Retry this step
+            continue;
+          } else {
+            sendProgress({
+              type: "chat-response",
+              status: "plan-aborted",
+              message: `Plan aborted at step ${i + 1}: ${resumeResult.message}`,
+            });
+            return {
+              sessionId: targetSessionId,
+              summary: `Aborted at step ${i + 1}: ${desc}`,
+              success: false,
+            };
+          }
+        }
+
         results.push({
           step: i + 1,
           description: desc,

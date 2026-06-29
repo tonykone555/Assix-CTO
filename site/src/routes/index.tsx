@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { readFile } from "node:fs/promises";
+import { useState, useEffect } from "react";
 import { 
   Eye, 
   MousePointer2, 
   Zap, 
   History, 
-  Shield, 
   ArrowRight,
   Monitor,
   Cpu,
@@ -15,7 +15,11 @@ import {
   CheckCircle2,
   Sparkles,
   Layers,
-  Activity
+  Activity,
+  Search,
+  Check,
+  Loader2,
+  MousePointer
 } from "lucide-react";
 
 const getBusinessName = createServerFn({ method: "GET" }).handler(async () => {
@@ -23,9 +27,9 @@ const getBusinessName = createServerFn({ method: "GET" }).handler(async () => {
     const cfg = JSON.parse(await readFile("site.json", "utf8")) as {
       businessName?: string;
     };
-    return cfg.businessName?.trim() ?? "Assix";
+    return cfg.businessName?.trim() ?? "ASSIX.";
   } catch {
-    return "Assix";
+    return "ASSIX.";
   }
 });
 
@@ -33,6 +37,159 @@ export const Route = createFileRoute("/")({
   loader: () => getBusinessName(),
   component: Home,
 });
+
+function VirtualDemo() {
+  const [step, setStep] = useState(0);
+  const [text, setText] = useState("");
+  const fullText = "Find tech leads in San Francisco...";
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStep((s) => (s + 1) % 4);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (step === 0) {
+      setText("");
+      let i = 0;
+      const typing = setInterval(() => {
+        if (i < fullText.length) {
+          setText(fullText.slice(0, i + 1));
+          i++;
+        } else {
+          clearInterval(typing);
+        }
+      }, 50);
+      return () => clearInterval(typing);
+    }
+  }, [step]);
+
+  return (
+    <div className="relative max-w-4xl mx-auto rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl overflow-hidden group">
+      {/* Browser Header */}
+      <div className="h-12 bg-neutral-800 flex items-center px-4 gap-3 border-b border-white/5">
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/30" />
+          <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/30" />
+          <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/30" />
+        </div>
+        <div className="flex-1 h-7 bg-neutral-950 rounded-lg border border-white/5 flex items-center px-3 gap-2">
+          <Lock className="w-3 h-3 text-neutral-600" />
+          <span className="text-[10px] text-neutral-500 font-mono">https://app.assix.ai/orchestrator</span>
+        </div>
+      </div>
+
+      {/* Browser Content */}
+      <div className="aspect-[16/9] bg-neutral-950 p-8 flex flex-col relative overflow-hidden">
+        {/* Background Grid */}
+        <div className="absolute inset-0 bg-[radial-gradient(#1a1a1a_1px,transparent_1px)] [background-size:24px_24px] opacity-50" />
+        
+        <div className="relative z-10 flex flex-col h-full">
+          <div className="mb-8">
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-4">AI Instruction</h4>
+            <div className="bg-neutral-900 border border-indigo-500/30 rounded-xl p-4 shadow-xl">
+              <p className="text-sm font-mono text-indigo-100 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                {text}
+                <span className="w-1.5 h-4 bg-indigo-500 animate-pulse" />
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 rounded-xl border border-white/5 bg-neutral-900/50 backdrop-blur-sm p-6 flex flex-col gap-4 overflow-hidden relative">
+             {/* Simulated Browser Viewport */}
+             {step >= 1 && (
+               <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700">
+                 <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-neutral-800 animate-pulse" />
+                      <div className="h-3 w-32 bg-neutral-800 rounded-full animate-pulse" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="h-6 w-16 bg-neutral-800 rounded-md animate-pulse" />
+                      <div className="h-6 w-6 bg-neutral-800 rounded-md animate-pulse" />
+                    </div>
+                 </div>
+                 
+                 <div className="space-y-4">
+                   {[1, 2, 3].map((i) => (
+                     <div key={i} className={`p-4 rounded-lg border border-white/5 flex items-center justify-between transition-all duration-500 ${step >= 2 && i === 1 ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-neutral-950/50'}`}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-neutral-800" />
+                          <div className="space-y-2">
+                            <div className="h-3 w-40 bg-neutral-800 rounded-full" />
+                            <div className="h-2 w-24 bg-neutral-800 rounded-full opacity-50" />
+                          </div>
+                        </div>
+                        {step >= 2 && i === 1 ? (
+                          <div className="flex items-center gap-2 text-indigo-400 text-[10px] font-bold uppercase tracking-tighter">
+                            <CheckCircle2 className="w-4 h-4" /> Selected
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded border border-white/10" />
+                        )}
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+
+             {/* Animated Cursor */}
+             {step === 1 && (
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-[mouse-move_2s_ease-in-out_forwards]">
+                  <MousePointer2 className="w-6 h-6 text-white drop-shadow-xl fill-indigo-600" />
+                  <div className="absolute top-full left-full mt-2 bg-indigo-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-tighter shadow-xl">Searching...</div>
+               </div>
+             )}
+
+             {step === 2 && (
+               <div className="absolute top-1/4 right-1/4 animate-[mouse-click_1s_ease-in-out_forwards]">
+                  <MousePointer2 className="w-6 h-6 text-white drop-shadow-xl fill-indigo-600" />
+                  <div className="absolute top-full left-full mt-2 bg-indigo-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-tighter shadow-xl">Selecting Lead</div>
+                  <div className="absolute top-0 left-0 w-8 h-8 -translate-x-1/2 -translate-y-1/2 bg-indigo-500/40 rounded-full animate-ping" />
+               </div>
+             )}
+
+             {/* Success Overlay */}
+             {step === 3 && (
+               <div className="absolute inset-0 bg-neutral-950/80 backdrop-blur-md flex items-center justify-center animate-in fade-in zoom-in duration-500 z-20">
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/20">
+                      <Check className="w-10 h-10 text-white" />
+                    </div>
+                    <div>
+                      <h5 className="text-xl font-bold text-white mb-1">Task Completed</h5>
+                      <p className="text-sm text-neutral-400">12 tech leads exported to CRM.</p>
+                    </div>
+                  </div>
+               </div>
+             )}
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-6 opacity-30 text-[10px] uppercase tracking-widest font-mono pointer-events-none">
+          <span className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Execution Active</span>
+          <span className="flex items-center gap-2"><Activity className="w-3 h-3" /> 120 FPS Viewer</span>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes mouse-move {
+          0% { transform: translate(100px, 100px); }
+          100% { transform: translate(0, 0); }
+        }
+        @keyframes mouse-click {
+          0% { transform: translate(0, 0); scale: 1; }
+          50% { transform: translate(-20px, 10px); scale: 0.9; }
+          100% { transform: translate(-20px, 10px); scale: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 function Home() {
   const businessName = Route.useLoaderData();
@@ -44,23 +201,24 @@ function Home() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Shield className="w-5 h-5 text-white" />
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-white">{businessName}</span>
+            <span className="font-black text-xl tracking-tighter text-white">{businessName}</span>
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">How it Works</a>
-            <Link to="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+            <a href="#features" className="text-xs font-bold uppercase tracking-widest text-neutral-500 hover:text-white transition-colors">Features</a>
+            <a href="#demo" className="text-xs font-bold uppercase tracking-widest text-neutral-500 hover:text-white transition-colors">Demo</a>
+            <Link to="/dashboard" className="text-xs font-bold uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">Dashboard</Link>
+            <Link to="/history" className="text-xs font-bold uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">History</Link>
           </div>
 
           <div className="flex items-center gap-4">
             <Link 
               to="/dashboard" 
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-sm font-semibold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/25"
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/25"
             >
-              Get Started
+              Start Building
             </Link>
           </div>
         </div>
@@ -77,7 +235,7 @@ function Home() {
         <div className="max-w-7xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-8 animate-fade-in">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Next-Gen Automation</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">The Future of Web Ops</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-400">
@@ -87,51 +245,33 @@ function Home() {
           
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-neutral-400 mb-12 leading-relaxed">
             Build, monitor, and execute web-based tasks in real-time with a visual live-preview. 
-            The only automation platform that lets you watch and interact with your workflows as they happen.
+            Watching your workflows as they happen is the only way to ensure 100% accuracy.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-24">
             <Link 
               to="/dashboard"
               className="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-lg font-bold transition-all hover:scale-105 shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2"
             >
-              Start Building <ArrowRight className="w-5 h-5" />
+              Get Started <ArrowRight className="w-5 h-5" />
             </Link>
-            <button className="w-full sm:w-auto px-8 py-4 bg-neutral-900 border border-neutral-800 text-white rounded-xl text-lg font-bold transition-all hover:bg-neutral-800 flex items-center justify-center gap-2">
-              <Play className="w-5 h-5 text-indigo-400" /> View Demo
-            </button>
+            <Link 
+              to="/history"
+              className="w-full sm:w-auto px-8 py-4 bg-neutral-900 border border-neutral-800 text-white rounded-xl text-lg font-bold transition-all hover:bg-neutral-800 flex items-center justify-center gap-2"
+            >
+              View History
+            </Link>
           </div>
 
-          {/* Viewer Mockup */}
-          <div className="relative max-w-5xl mx-auto rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl overflow-hidden group animate-float">
-            <div className="h-10 bg-neutral-800 flex items-center px-4 gap-2 border-b border-white/5">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/30" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/30" />
-                <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/30" />
-              </div>
-              <div className="ml-4 flex-1 h-6 bg-neutral-950 rounded-md border border-white/5 flex items-center px-3">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-2" />
-                <span className="text-[10px] text-neutral-500 font-mono">https://automation.assix.ai/live-stream</span>
-              </div>
+          {/* Virtual Demo Section */}
+          <div id="demo" className="mb-32 scroll-mt-24">
+            <div className="text-center mb-12">
+              <h3 className="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
+                <Play className="w-5 h-5 text-indigo-500" /> See it in action
+              </h3>
+              <p className="text-neutral-500 text-sm">Automate any web task with simple natural language instructions.</p>
             </div>
-            <div className="aspect-video bg-neutral-950 relative group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/10 to-transparent pointer-events-none" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4 opacity-50 group-hover:opacity-100 transition-opacity">
-                  <div className="w-16 h-16 rounded-full bg-indigo-600/20 flex items-center justify-center border border-indigo-500/30">
-                    <Monitor className="w-8 h-8 text-indigo-500" />
-                  </div>
-                  <span className="text-sm font-medium text-neutral-500">Live Browser Stream Active</span>
-                </div>
-              </div>
-              
-              {/* Mock Cursor/Action */}
-              <div className="absolute top-1/3 left-1/4 animate-bounce-horizontal">
-                <MousePointer2 className="w-6 h-6 text-white drop-shadow-lg" />
-                <div className="absolute top-full left-full mt-2 bg-indigo-600 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-tighter">Click Event</div>
-              </div>
-            </div>
+            <VirtualDemo />
           </div>
         </div>
       </section>
@@ -140,8 +280,8 @@ function Home() {
       <section id="features" className="py-32 relative bg-neutral-900/30">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">Everything you need to <br/> scale web operations</h2>
-            <p className="text-neutral-400 text-lg">Powerful tools built for precision and reliability.</p>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">Scale your web operations <br/> with precision</h2>
+            <p className="text-neutral-400 text-lg">Powerful tools built for reliability and ease of use.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -252,7 +392,7 @@ function Home() {
             <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
             
             <h2 className="text-4xl md:text-6xl font-black mb-8 text-white tracking-tight leading-tight">Ready to automate the web?</h2>
-            <p className="text-xl text-indigo-100 mb-12 max-w-2xl mx-auto font-medium">Join 500+ teams using Assix to scale their browser-based workflows without the headache.</p>
+            <p className="text-xl text-indigo-100 mb-12 max-w-2xl mx-auto font-medium">Join 500+ teams using {businessName} to scale their browser-based workflows without the headache.</p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link 
@@ -278,17 +418,17 @@ function Home() {
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-bold text-lg text-white">{businessName}</span>
+                <span className="font-black text-lg text-white tracking-tighter">{businessName}</span>
               </div>
               <p className="text-neutral-500 max-w-xs leading-relaxed">
                 The leading platform for visual browser automation and real-time monitoring. Built for scale, designed for humans.
               </p>
             </div>
             <div>
-              <h5 className="font-bold text-white mb-6">Product</h5>
-              <ul className="space-y-4 text-neutral-500 text-sm">
+              <h5 className="text-xs font-black uppercase tracking-widest text-white mb-6">Product</h5>
+              <ul className="space-y-4 text-neutral-500 text-xs font-bold uppercase tracking-widest">
                 <li><a href="#features" className="hover:text-indigo-400 transition-colors">Features</a></li>
                 <li><Link to="/dashboard" className="hover:text-indigo-400 transition-colors">Live Viewer</Link></li>
                 <li><Link to="/history" className="hover:text-indigo-400 transition-colors">History</Link></li>
@@ -296,8 +436,8 @@ function Home() {
               </ul>
             </div>
             <div>
-              <h5 className="font-bold text-white mb-6">Company</h5>
-              <ul className="space-y-4 text-neutral-500 text-sm">
+              <h5 className="text-xs font-black uppercase tracking-widest text-white mb-6">Company</h5>
+              <ul className="space-y-4 text-neutral-500 text-xs font-bold uppercase tracking-widest">
                 <li><a href="#" className="hover:text-indigo-400 transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-indigo-400 transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-indigo-400 transition-colors">Privacy</a></li>
@@ -306,11 +446,11 @@ function Home() {
             </div>
           </div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-12 border-t border-white/5">
-            <p className="text-neutral-600 text-sm">© {new Date().getFullYear()} {businessName} Inc. All rights reserved.</p>
+            <p className="text-neutral-600 text-[10px] uppercase tracking-widest font-bold">© {new Date().getFullYear()} {businessName} Inc. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-sm">Twitter</a>
-              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-sm">GitHub</a>
-              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-sm">Discord</a>
+              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-[10px] uppercase tracking-widest font-bold">Twitter</a>
+              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-[10px] uppercase tracking-widest font-bold">GitHub</a>
+              <a href="#" className="text-neutral-600 hover:text-white transition-colors text-[10px] uppercase tracking-widest font-bold">Discord</a>
             </div>
           </div>
         </div>

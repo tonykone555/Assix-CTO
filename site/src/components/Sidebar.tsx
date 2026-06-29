@@ -1,5 +1,5 @@
 import { 
-  Shield, 
+  Sparkles, 
   Layers, 
   ChevronRight, 
   Settings, 
@@ -9,13 +9,13 @@ import { Link } from "@tanstack/react-router";
 
 export function Sidebar() {
   return (
-    <aside className="w-64 border-r border-neutral-800 bg-neutral-900/50 flex flex-col hidden md:flex h-full">
+    <aside className="w-64 border-r border-neutral-800 bg-neutral-900/50 flex flex-col hidden md:flex h-full font-sans">
       <div className="p-4 border-b border-neutral-800 flex items-center gap-2">
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <Shield className="text-white" size={20} />
+            <Sparkles className="text-white" size={20} />
           </div>
-          <span className="font-bold text-xl tracking-tight text-white">Assix</span>
+          <span className="font-black text-xl tracking-tighter text-white uppercase">ASSIX.</span>
         </Link>
       </div>
       

@@ -7,8 +7,8 @@ import {
   Loader2,
   Terminal,
   ExternalLink,
-  Shield,
-  ShieldQuestion,
+  Sparkles,
+  HelpCircle,
   Key,
   CheckCircle,
   Activity,
@@ -16,8 +16,7 @@ import {
   Send,
   X,
   Bot,
-  User,
-  Sparkles
+  User
 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 
@@ -465,7 +464,7 @@ function Dashboard() {
                   <div className="w-3 h-3 rounded-full bg-neutral-800"></div>
                 </div>
                 <div className="flex-1 h-6 bg-neutral-950 border border-neutral-800 rounded-md px-3 flex items-center gap-2">
-                  <Shield size={12} className="text-green-500" />
+                  <Sparkles size={12} className="text-green-500" />
                   <span className="text-[10px] text-neutral-500 truncate">{url}</span>
                 </div>
                 <ExternalLink size={14} className="text-neutral-600" />
@@ -486,7 +485,7 @@ function Dashboard() {
                     <div className="bg-neutral-900 border-2 border-purple-500 rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.3)] p-6 flex flex-col gap-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-500 border border-purple-500/20">
-                          {intervention.type === '2fa' || intervention.type === 'otp' ? <Key size={20} /> : <ShieldQuestion size={20} />}
+                          {intervention.type === '2fa' || intervention.type === 'otp' ? <Key size={20} /> : <HelpCircle size={20} />}
                         </div>
                         <div className="flex-1">
                           <h3 className="text-sm font-bold text-white leading-tight">Human Intervention</h3>
@@ -628,7 +627,7 @@ function Dashboard() {
                   <div className="space-y-2 opacity-50">
                     <Bot size={40} className="text-neutral-600 mx-auto" />
                     <p className="text-xs px-8 text-neutral-500 font-medium leading-relaxed">
-                      Hello! I'm your Assix Automation assistant. How can I help you today?
+                      Hello! I'm your ASSIX. Automation assistant. How can I help you today?
                     </p>
                   </div>
                   
@@ -660,7 +659,7 @@ function Dashboard() {
                     msg.role === 'user' ? 'text-indigo-400 flex-row-reverse' : 'text-purple-400'
                   }`}>
                     {msg.role === 'user' ? <User size={10} /> : <Bot size={10} />}
-                    {msg.role === 'user' ? 'You' : 'Assix AI'}
+                    {msg.role === 'user' ? 'You' : 'ASSIX. AI'}
                   </div>
                   <div className={`max-w-[90%] p-3 rounded-2xl text-sm shadow-sm ${
                     msg.role === 'user' 
@@ -682,7 +681,7 @@ function Dashboard() {
                 <div className="flex flex-col items-start animate-in fade-in duration-300">
                   <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold uppercase tracking-wider text-purple-400">
                     <Bot size={10} />
-                    Assix AI
+                    ASSIX. AI
                   </div>
                   <div className="bg-neutral-800 text-neutral-200 p-3 rounded-2xl rounded-tl-none border border-neutral-700 flex gap-1">
                     <div className="w-1.5 h-1.5 bg-neutral-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
@@ -712,7 +711,7 @@ function Dashboard() {
                 </button>
               </form>
               <p className="text-[9px] text-neutral-600 mt-3 text-center uppercase tracking-widest font-medium">
-                Powered by Assix AI Orchestrator
+                Powered by ASSIX. AI Orchestrator
               </p>
             </div>
           </div>
